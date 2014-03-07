@@ -124,23 +124,23 @@ describe("Mime", function() {
     describe("a new mimetype", function() {
       var proprietaryStandard;
       beforeEach(function() {
-        new Mime.Type({name: "proprietary/standard"});
+        new Mime.Type({name: 'proprietary/standard'});
 
-      function proprietaryStandardParser(data) {
-        return {
-          post: {
-            postId: 1,
-            title: "My Great Post"
-          }
+        function proprietaryParser(data) {
+          return {
+            post: {
+              postId: 1,
+              title: "My Great Post"
+            }
+          };
         };
-      };
 
-      Mime.types["proprietary/standard"].parsers.push(proprietaryStandardParser);
+        Mime.types["proprietary/standard"].parsers.push(proprietaryParser);
 
-      proprietaryStandard = "<post> \
-                               <postId>1</postId> \
-                               <title>My Great Post</title> \
-                             </post>";
+        proprietaryStandard = "<post> \
+                                <postId>1</postId> \
+                                <title>My Great Post</title> \
+                              </post>";
       });
 
       it("transforms a mimetype according to its parsers", function() {
@@ -148,23 +148,79 @@ describe("Mime", function() {
           {type: "proprietary/standard", data: proprietaryStandard}))
           .toEqual({post: {postId: 1, title: "My Great Post"}});
       });
+    });
+
+    describe("a new mimetype with backed data format", function() {
+      var atomXml, applicationJson;
+      beforeEach(function() {
+        new Mime.Format({name: "xml"});
+        new Mime.Type({name: "application/atom+xml"});
+        new Mime.Format({name: "json"});
+        new Mime.Type({name: "application/json"});
+
+        function xmlParser(data) {
+          return {
+            post: {
+              postId: 1,
+              title: "My Great Post"
+            }
+          };
+        };
+
+        function atomParser(data) {
+          data.post.specialAttr = true;
+          return data;
+        };
+
+        function jsonParser(json) {
+          return json;
+        };
+
+        function applicationJsonParser(json) {
+          json.post.newAttr = true;
+          return json;
+        };
+
+        Mime.formats["xml"].parsers.push(xmlParser);
+        Mime.types["application/atom+xml"].parsers.push(atomParser);
+
+        Mime.formats["json"].parsers.push(jsonParser);
+        Mime.types["application/json"].parsers.push(applicationJsonParser);
+
+        atomXml = "<post> \
+                    <postId>1</postId> \
+                    <title>My Great Post</title> \
+                  </post>";
+
+        applicationJson = {post: {postId: 1, title: 'My Great Post'}};
+      });
+
+      it("transforms a mimetype according to its parsers & underlying format", function() {
+        expect(Mime.parse(
+          {type: "application/atom+xml", data: atomXml}))
+          .toEqual({post: {postId: 1, title: "My Great Post", specialAttr: true}});
+
+        expect(Mime.parse(
+          {type: "application/json", data: applicationJson}))
+          .toEqual({post: {postId: 1, title: "My Great Post", newAttr: true}});
+      });
 
       it("also has syntax for parsing via the MimeType instance", function() {
-        expect(Mime.types["proprietary/standard"].parse(proprietaryStandard))
-          .toEqual({post: {postId: 1, title: "My Great Post"}});
+        expect(Mime.types["application/atom+xml"].parse(atomXml))
+          .toEqual({post: {postId: 1, title: "My Great Post", specialAttr: true}});
 
-        expect(Mime.types["proprietary/standard"]
-          .parse({data: proprietaryStandard}))
-            .toEqual({post: {postId: 1, title: "My Great Post"}});
+        expect(Mime.types["application/atom+xml"]
+          .parse({data: atomXml}))
+            .toEqual({post: {postId: 1, title: "My Great Post", specialAttr: true}});
       });
 
       it("throws a ParseError if the parse chain does not return an object", 
         function() {
 
-        Mime.types["proprietary/standard"].parsers.removeAll();
+        Mime.formats["xml"].parsers.removeAll();
 
         expect(function() { 
-          Mime.parse({type: "proprietary/standard", 
+          Mime.parse({type: "application/atom+xml", 
             data: proprietaryStandard})
         }).toThrow();
       });
