@@ -173,11 +173,11 @@ describe("Mime", function() {
         };
 
         function jsonParser(json) {
+          json.post.newAttr = true;
           return json;
         };
 
         function applicationJsonParser(json) {
-          json.post.newAttr = true;
           return json;
         };
 
